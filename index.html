@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <title>Savitr: one that rises and sets</title>
+    <script src="jquery-3.3.1.min.js"></script>
+
+    <script src="savitr.js"></script>
+    <script src="temp.js"></script>
+
+    <script>
+      $(function() {
+        var this_game_board = $('#my_game');
+
+        var game = new Savitr(this_game_board, {columns: 4, rows: 3});
+        game.start();
+
+        console.log(game);
+      });
+
+    </script>
+
+    <style>
+      .board { table-layout:fixed; }
+      .board td { width:100px; height:100px; border-width: 1px; border-style: solid;  border-color: #000000; }
+      .board td.selected { border-width: 5px; border-color: blue; }
+    </style>
+  </head>
+  <body>
+    <div id="my_game">
+    </div>
+  </body>
+</html>
