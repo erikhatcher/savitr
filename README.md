@@ -2,8 +2,13 @@
 
 `Set`, in JavaScript.
 
-## naming
+# ready, SET, go!
 
-https://en.wikipedia.org/wiki/Savitr ... because Surya
-   https://en.wikipedia.org/wiki/Surya#In_Buddhism
-      `Savitr refers to one that rises and _sets_`
+    git clone https://github.com/erikhatcher/savitr
+    open savitr/index.html
+
+# naming
+
+[Savitr](https://en.wikipedia.org/wiki/Savitr) ... because [Surya](https://en.wikipedia.org/wiki/Surya#In_Buddhism)
+
+      Savitr refers to one that rises and _sets_
