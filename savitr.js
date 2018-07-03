@@ -29,6 +29,8 @@ var Savitr = function(game_board, options) {
 
   game_board.html(draw_board(rows,columns));
 
+  game_board.addClass('savitr'); // tag the game board, for styling and identification purposes
+
   function start() {
     selected = [];  // clear selected so the reset button can call this method
 
@@ -37,26 +39,31 @@ var Savitr = function(game_board, options) {
     // make cards clickable
     $('.card', game_board).click(card_click);
 
-    update_status('Rise and Set');
+    update_status('Savitr');
   }
 
   function draw_board(rows,columns) {
     var board = $('<div/>').addClass('main');
 
-    var header = $('<div class="header"><span class="status"></span><span class="controls"><button class="control reset">reset</button></span></div>');
-    $('.controls .reset',header).click(start);
-    board.append(header);
 
     var table = $('<table/>').addClass('board');
-    board.append(table);
 
-    for (var r=0; r < settings['rows']; r++) {
+    table.append($('<tr class="header">'+
+                      '<th class="sets_left" align="left"></th>' +
+                      '<th class="message" align="center" colspan="'+(columns-2)+'"></th>' +
+                      '<th class="controls" align="right"><button class="control reset">reset</button></th>' +
+                    '</tr>'));
+    $('.controls .reset',table).click(start);
+
+    for (var r=0; r < rows; r++) {
       var row = $('<tr/>');
-      for (var c=0; c < settings['columns']; c++) {
-        row.append($('<td/>').addClass('board-' + ((r*settings['columns'])+c+1)));
+      for (var c=0; c < columns; c++) {
+        row.append($('<td/>').addClass('board-' + ((r*columns)+c+1)));
       }
       table.append(row);
     }
+
+    board.append(table);
 
     return board;
   }
@@ -81,10 +88,15 @@ var Savitr = function(game_board, options) {
   }
 
   function update_status(messages) {
+    // could pass in a "string" or ["array","of","strings"]
     messages = [].concat(messages);
+
     // How many sets are there laid out?
     var sets_left = sets_in(cards_left());
-    $('.status',game_board).text(sets_left.length + messages.join(' '));
+
+    $('.sets_left',game_board).html(
+      (sets_left == 0 ? 'No sets' : sets_left.length + ' set' + (sets_left.length>1 ? 's' : '')) + ' left');
+    $('.message',game_board).html(messages.join(' '));
   }
 
   function cards_left() {
