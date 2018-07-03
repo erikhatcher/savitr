@@ -1,4 +1,13 @@
-var Savitr = function(game_board, options={columns: 4, rows: 3}) {
+var Savitr = function(game_board, options) {
+  // game_board: <div> where game is drawn
+  // options: see settings below, including default values
+  var settings = {
+    columns: 4,
+    rows:    3,
+    shuffle: true
+  };
+
+  $.extend(settings,options);  // options override the default settings
 
   // Universal constants
   var numbers  = ['one',   'two',      'three'];
@@ -6,62 +15,90 @@ var Savitr = function(game_board, options={columns: 4, rows: 3}) {
   var shadings = ['empty', 'striped',  'solid'];
   var shapes   = ['oval',  'squiggle', 'diamond'];
 
+  var deck = new_deck(settings['shuffle']);
+
+  var rows = settings['rows'];
+  var columns = settings['columns']
+
+  if (rows * columns > deck.length) {
+    throw 'rows: ' + rows + ',columns: ' + columns + ' too big for deck size: ' + deck.length;
+  }
+
   // Game state
-  var deck = []; // only first columns*rows are seen
   var selected = []; // each value is card id (index into `deck`)
 
-  // Build deck
-  numbers.forEach(function(number) {
-    colors.forEach(function(color) {
-      shadings.forEach(function(shading) {
-        shapes.forEach(function(shape) {
-          var card = {number: number, color: color, shading: shading, shape:shape};
-          deck.push(card);
-        })
-      })
-    })
-  });
-
-  // TODO: use 'options' to control how deck is sorted
-  shuffle_array(deck);
+  game_board.html(draw_board(rows,columns));
 
   function start() {
-    // TODO: adjust terminology to something like:
-    //    game_frame > status & cards
+    selected = [];  // clear selected so the reset button can call this method
+
+    deal_cards();
+
+    // make cards clickable
+    $('.card', game_board).click(card_click);
+
+    update_status('Rise and Set');
+  }
+
+  function draw_board(rows,columns) {
     var board = $('<div/>').addClass('main');
 
-    var header = $('<div class="header"><span class="status"></span> :: <span class="controls">reset</span></div>');
+    var header = $('<div class="header"><span class="status"></span><span class="controls"><button class="control reset">reset</button></span></div>');
+    $('.controls .reset',header).click(start);
     board.append(header);
 
     var table = $('<table/>').addClass('board');
     board.append(table);
 
-    for (var r=0; r < options['rows']; r++) {
+    for (var r=0; r < settings['rows']; r++) {
       var row = $('<tr/>');
-      for (var c=0; c < options['columns']; c++) {
-        row.append($('<td/>').addClass('board-' + ((r*options['columns'])+c+1)));
+      for (var c=0; c < settings['columns']; c++) {
+        row.append($('<td/>').addClass('board-' + ((r*settings['columns'])+c+1)));
       }
       table.append(row);
     }
 
-    game_board.html(board);
+    return board;
+  }
 
-    deal_cards();
-    $('.card', game_board).click(card_click);
+  function new_deck(shuffle) {
+    var deck = [];
 
+    numbers.forEach(function(number) {
+      colors.forEach(function(color) {
+        shadings.forEach(function(shading) {
+          shapes.forEach(function(shape) {
+            var card = {number: number, color: color, shading: shading, shape:shape};
+            deck.push(card);
+          })
+        })
+      })
+    });
+
+    if (shuffle) { shuffle_array(deck); }
+
+    return deck;
+  }
+
+  function update_status(messages) {
+    messages = [].concat(messages);
     // How many sets are there laid out?
+    var sets_left = sets_in(cards_left());
+    $('.status',game_board).text(sets_left.length + messages.join(' '));
+  }
+
+  function cards_left() {
     var cards_left = [];
     $.each($('.card',game_board), function(index,c) {
       var card_number=$(c).attr('id').split('-')[1];
       cards_left.push(deck[card_number]);
     });
-    var left = sets_left(cards_left);
-    console.log(left);
-    $('.status',game_board).text(left.length);
+
+    return cards_left;
   }
 
   function deal_cards() {
-    for (var i=0; i < options['rows']*options['columns'] ; i++) {
+    for (var i=0; i < settings['rows']*settings['columns'] ; i++) {
       var card_index = i;  // deck is shuffled, assuming, so the i'th item in the deck is the i'th card placed
       var card = deck[card_index];
       // _Joy of Set_ file naming scheme (p. ???); Blake chopped these up, thanks Blake!
@@ -101,26 +138,29 @@ var Savitr = function(game_board, options={columns: 4, rows: 3}) {
           selected_cards.push(deck[c]);
         });
         if (is_set(selected_cards)) {
-          console.log("SET!");
-          selected = [];
+          var messages = ['SET!'];
 
           // remove the cards and unselect the board spots
+          selected = [];
           $('.selected .card', game_board).remove();
           $('.selected', game_board).toggleClass('selected');
 
           if ($('.card', game_board).length == 0) {
-            console.log("CLEARED!!!");
+            messages.push('CLEARED!!!');
           }
 
-          var cards_left = [];
-          $.each($('.card',game_board), function(index,c) {
-            var card_number=$(c).attr('id').split('-')[1];
-            cards_left.push(deck[card_number]);
-          });
-          var left = sets_left(cards_left);
-          console.log(left);
-          $('.status',game_board).text(left.length);
+          if (sets_in(cards_left()).length == 0) {
+            messages.push('NO SETS LEFT');
+          }
 
+          update_status(messages);
+          console.log(messages, selected_cards);
+        } else {
+          // TODO: maybe also update status so it's game board visible?
+
+          // three cards selected, but not a set, let's log why:
+          console.log(selected_cards,
+            'not a set because',vector_mod3(vector_sum(selected_cards)));
         }
       }
     } else {
@@ -133,11 +173,20 @@ var Savitr = function(game_board, options={columns: 4, rows: 3}) {
   }
 
   function is_set(three_cards) {
-    var sum = vector_sum(three_cards);
-    return (sum['number']  % 3 == 0) &&
-           (sum['color']   % 3 == 0) &&
-           (sum['shading'] % 3 == 0) &&
-           (sum['shape']   % 3 == 0);
+    var mod3_vector = vector_mod3(vector_sum(three_cards));
+    return (mod3_vector['number']  == 0) &&
+           (mod3_vector['color']   == 0) &&
+           (mod3_vector['shading'] == 0) &&
+           (mod3_vector['shape']   == 0);
+  }
+
+  function vector_mod3(vector) {
+    return {
+      number: vector['number'] % 3,
+      color: vector['color'] % 3,
+      shading: vector['shading'] % 3,
+      shape: vector['shape'] % 3
+    };
   }
 
   function vector_sum(three_cards) {
@@ -173,13 +222,15 @@ var Savitr = function(game_board, options={columns: 4, rows: 3}) {
     return sum;
   }
 
-  function sets_left(cards) {
-    // TODO: set a limit - how many iterations is this on 81 cards?
-    // throw exception if it's more than, say, 12 cards = 12*11*10?
+  function sets_in(cards) {
+    // At first I thought a limiter was needed here, but turns out that 81 cards
+    // is 85,320 evaluations (and 1,080 sets) and actually unnoticably performant.
     var sets = [];
+    var counter = 0;
     for (var i=0; i<cards.length;i++) {
       for (var j=i+1; j<cards.length;j++) {
         for (var k=j+1;k<cards.length;k++) {
+          counter++;
           var set_possibility = [cards[i],cards[j],cards[k]];
           if (is_set(set_possibility)) {
             sets.push(set_possibility);
@@ -188,15 +239,17 @@ var Savitr = function(game_board, options={columns: 4, rows: 3}) {
       }
     }
 
+    console.log(cards.length, ' cards ',
+                counter, ' possible sets evaluated.  Found ',
+                sets.length, 'sets:', sets);
+
     return sets;
   }
 
-  /**
-   * Randomize array element order in-place.
-   * Using Durstenfeld shuffle algorithm.
-   *   adapted from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-   */
   function shuffle_array(array) {
+    // Randomize array element order in-place.
+    // Using Durstenfeld shuffle algorithm.
+    //   * borrowed from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
     for (var i = array.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
       var temp = array[i];
