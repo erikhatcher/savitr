@@ -7,7 +7,7 @@
     git clone https://github.com/erikhatcher/savitr
     open savitr/index.html
 
-    ![Savitr example](images/example.png?raw=true)
+![Savitr example](images/example.png?raw=true)
 
 
 # naming
