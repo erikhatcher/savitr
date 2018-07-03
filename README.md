@@ -7,6 +7,9 @@
     git clone https://github.com/erikhatcher/savitr
     open savitr/index.html
 
+    ![Savitr example](https://raw.githubusercontent.com/erikhatcher/savitr/master/images/example.png)
+
+
 # naming
 
 [Savitr](https://en.wikipedia.org/wiki/Savitr) ... because [Surya](https://en.wikipedia.org/wiki/Surya#In_Buddhism)
