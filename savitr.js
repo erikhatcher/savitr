@@ -69,6 +69,7 @@ var Savitr = function(game_board, options) {
   }
 
   function new_deck(shuffle) {
+    // shuffle can be true/false or a string to set the random seed; true for arbitrary seed
     var deck = [];
 
     numbers.forEach(function(number) {
@@ -82,7 +83,13 @@ var Savitr = function(game_board, options) {
       })
     });
 
-    if (shuffle) { shuffle_array(deck); }
+    if (shuffle) {
+      // TODO: add fallback to just Math.random (without seeded capability) if seedrandom isn't found
+
+      // checked the code and null seed is same as Math.seedrandom()
+      var rng = new Math.seedrandom(typeof shuffle === 'string' ? shuffle : null);
+      shuffle_array(deck, rng);
+    }
 
     return deck;
   }
@@ -258,12 +265,15 @@ var Savitr = function(game_board, options) {
     return sets;
   }
 
-  function shuffle_array(array) {
+  function shuffle_array(array, rng) {
+    if (rng == null) {
+      rng = Math.random;
+    }
     // Randomize array element order in-place.
     // Using Durstenfeld shuffle algorithm.
     //   * borrowed from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
     for (var i = array.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
+      var j = Math.floor(rng() * (i + 1));
       var temp = array[i];
       array[i] = array[j];
       array[j] = temp;

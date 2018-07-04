@@ -2,15 +2,22 @@
   <head>
     <title>Savitr: one that rises and sets</title>
     <script src="jquery-3.3.1.min.js"></script>
+    <script src="seedrandom.min.js"></script>
 
     <script src="savitr.js"></script>
 
     <script>
       $(function() {
+        var game_seed = 'saved_1';
+
         var this_game_board = $('#my_game');
         var game = new Savitr(this_game_board, {columns: 4, rows: 3, shuffle: true});
         // $('#start').click(game.start);
         game.start();
+
+        // Test if two games work at the same time, one with a fixed seed (same, randomized deck every time)
+        // var gb2 = $('#game2');
+        // new Savitr(gb2, {columns: 4, rows: 3, shuffle: true, shuffle: 'x'}).start();
       });
 
     </script>
@@ -26,5 +33,9 @@
     <!-- <button id="start">Start</button> -->
     <div id="my_game">
     </div>
+
+    <hr/>
+
+    <!-- <div id="game2"></div> -->
   </body>
 </html>
