@@ -2,16 +2,24 @@
   <head>
     <title>Savitr: one that rises and sets</title>
     <script src="jquery-3.3.1.min.js"></script>
-    <script src="seedrandom.min.js"></script>
 
     <script src="savitr.js"></script>
 
     <script>
+      // urlParam copied from https://stackoverflow.com/questions/7731778/get-query-string-parameters-with-jquery
+      $.urlParam = function (name) {
+          var results = new RegExp('[\?&]' + name + '=([^&#]*)')
+                            .exec(window.location.search);
+
+          return (results !== null) ? results[1] || 0 : false;
+      }
+
       $(function() {
-        var game_seed = 'saved_1';
+
+        var game_seed = $.urlParam('game_seed') || true;
 
         var this_game_board = $('#my_game');
-        var game = new Savitr(this_game_board, {columns: 4, rows: 3, shuffle: true});
+        var game = new Savitr(this_game_board, {columns: 4, rows: 3, shuffle: game_seed});
         // $('#start').click(game.start);
         game.start();
 
