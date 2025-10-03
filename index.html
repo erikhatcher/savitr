@@ -17,6 +17,7 @@
       $(function() {
 
         var game_seed = $.urlParam('game_seed') || true;
+//var game_seed = new Date().toISOString().split('T')[0];
 
         var this_game_board = $('#my_game');
         var game = new Savitr(this_game_board, {columns: 4, rows: 3, shuffle: game_seed});
@@ -38,7 +39,7 @@
     </style>
   </head>
   <body>
-    <!-- <button id="start">Start</button> -->
+
     <div id="my_game">
     </div>
 

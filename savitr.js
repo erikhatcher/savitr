@@ -14,44 +14,75 @@ var Savitr = function(game_board, options) {
   var colors   = ['red',   'green',    'purple'];
   var shadings = ['empty', 'striped',  'solid'];
   var shapes   = ['oval',  'squiggle', 'diamond'];
+  var deck_size = numbers.length * colors.length * shadings.length * shapes.length;
 
   var deck = new_deck(settings['shuffle']);
 
   var rows = settings['rows'];
   var columns = settings['columns']
 
-  if (rows * columns > deck.length) {
-    throw 'rows: ' + rows + ',columns: ' + columns + ' too big for deck size: ' + deck.length;
+  if (rows * columns > deck_size) {
+    throw 'rows: ' + rows + ',columns: ' + columns + ' too big for deck size: ' + deck_size;
   }
 
   // Game state
   var selected = []; // each value is card id (index into `deck`)
+  var found_sets = []; // strings of three card numbers (of the deck) separated by dashes "1-5-7".
 
   game_board.html(draw_board(rows,columns));
 
   game_board.addClass('savitr'); // tag the game board, for styling and identification purposes
 
+  var timer_display = $('.controls .timer',game_board);
+  var timer_var = null;
+  var total_seconds = 0;
+  var initial_sets = [];
+  var game_status = "-";
+
   function start() {
     selected = [];  // clear selected so the reset button can call this method
+    found_sets = [];
 
+    console.log('Dealing...')
+    deck = new_deck(settings['shuffle']);
     deal_cards();
+    initial_sets = sets_in(cards_left());
+    if (initial_sets.length == 0) {
+      $('.goal',game_board).html("No sets found for this deal. Enjoy today's break. See you tomorrow!");
+    } else {
+      $('.goal',game_board).html("Total sets: " + initial_sets.length);
+      update_game_status();
 
-    // make cards clickable
-    $('.card', game_board).click(card_click);
+      // make cards clickable
+      $('.card', game_board).click(card_click);
 
-    update_status('Savitr');
+      // Enable the finish button
+      $('.controls .finish',game_board).click(finish_click);
+
+      // Turn on the timer
+      total_seconds = 0;
+      if (!timer_var) { // Prevent multiple intervals from starting
+        timer_var = setInterval(timer, 1000);
+      }
+    }
+
+    // Set the title based, including seed/date
+    $('.title',game_board).html('Savitr' + (typeof settings['shuffle'] === 'string' ? '<br/>' + settings['shuffle'] : ''));
   }
 
   function draw_board(rows,columns) {
     var board = $('<div/>').addClass('main');
 
-
     var table = $('<table/>').addClass('board');
 
     table.append($('<tr class="header">'+
-                      '<th class="sets_left" align="left"></th>' +
+                      '<th class="title" align="left"></th>' +
                       '<th class="message" align="center" colspan="'+(columns-2)+'"></th>' +
-                      '<th class="controls" align="right"><button class="control reset">reset</button></th>' +
+                      '<th class="controls" align="right">'+
+                          '<span class="timer">00:00</span>'+
+                          '<button class="control finish">FINISH</button>'+
+                         // '<button class="control reset">reset</button>'+
+                      '</th>' +
                     '</tr>'));
     $('.controls .reset',table).click(start);
 
@@ -64,6 +95,8 @@ var Savitr = function(game_board, options) {
     }
 
     board.append(table);
+
+    board.append($('<div><span class="goal"/>&nbsp;<span class="game_status"/></div><div class="found_sets"/>'));
 
     return board;
   }
@@ -95,13 +128,13 @@ var Savitr = function(game_board, options) {
   function update_status(messages) {
     // could pass in a "string" or ["array","of","strings"]
     messages = [].concat(messages);
-
-    // How many sets are there laid out?
-    var sets_left = sets_in(cards_left());
-
-    $('.sets_left',game_board).html(
-      (sets_left == 0 ? 'No sets' : sets_left.length + ' set' + (sets_left.length>1 ? 's' : '')) + ' left');
     $('.message',game_board).html(messages.join(' '));
+
+    // Used to display number of sets left in status bar
+    // How many sets are there laid out?
+    // var sets_left = sets_in(cards_left());
+    // $('.sets_left',game_board).html(
+    //   (sets_left == 0 ? 'No sets' : sets_left.length + ' set' + (sets_left.length>1 ? 's' : '')) + ' left');
   }
 
   function cards_left() {
@@ -116,7 +149,7 @@ var Savitr = function(game_board, options) {
 
   function deal_cards() {
     for (var i=0; i < settings['rows']*settings['columns'] ; i++) {
-      var card_index = i;  // deck is shuffled, assuming, so the i'th item in the deck is the i'th card placed
+      var card_index = i;  // deck is shuffled (or not), so the i'th item in the deck is the i'th card placed
       var card = deck[card_index];
       // _Joy of Set_ file naming scheme (p. ???); Blake chopped these up, thanks Blake!
       var number_code = {one: '1', two: '2', three: '3'};
@@ -125,6 +158,7 @@ var Savitr = function(game_board, options) {
       var shape_code = {oval: 'O', squiggle: 'S', diamond: 'D'};
       var file_name = number_code[card.number] + color_code[card.color] + shading_code[card.shading] + shape_code[card.shape];
       var board_cell = $('.board-'+(i+1), game_board);
+      // TODO: use class for card index rather than `id` (so multiple boards work on same page)
       var img = $('<img id="card-'+card_index+'" src="data:image/png;base64,'+images[file_name]+'"/>').addClass('card');
           //$('<img id="card-'+card_index+'" src="images/'+file_name+'.png"/>').addClass('card');
       board_cell.html(img);
@@ -132,7 +166,7 @@ var Savitr = function(game_board, options) {
   }
 
   function card_click() {
-    var card_number=$(this).attr('id').split('-')[1];
+    var card_number=$(this).attr('id').split('-')[1]; // e.g. id="card-1" => "1"
 
     var already_selected = (selected.indexOf(card_number) != -1);
 
@@ -157,27 +191,58 @@ var Savitr = function(game_board, options) {
         if (is_set(selected_cards)) {
           var messages = ['SET!'];
 
-          // remove the cards and unselect the board spots
-          selected = [];
-          $('.selected .card', game_board).remove();
-          $('.selected', game_board).toggleClass('selected');
+          selected_card_number_string = selected.sort().join('-')
+          set_already_found = found_sets.includes(selected_card_number_string);
 
-          if ($('.card', game_board).length == 0) {
-            messages.push('CLEARED!!!');
+          if (!set_already_found) {
+            cloned = $('.selected .card', game_board).clone();
+            $('.found_sets', game_board).append($('<div/>').append(cloned));
+          // One game variation is to remove a found set.
+          // Leaving a found set visible allows finding other sets that may
+          // intersect with one of these cards.
+          //          $('.selected .card', game_board).remove();
+            $('.selected', game_board).toggleClass('selected');
+            console.log(selected);
+            found_sets.push(selected_card_number_string);
+            console.log(found_sets);
+            selected = [];
+
+            // update game status
+            update_game_status();
+
+          } else {
+            messages.push('ALREADY FOUND');
           }
 
-          if (sets_in(cards_left()).length == 0) {
+          // TODO: leaving this code here, but it won't get called in the
+          // current implementation of leaving all cards present rather than removing them
+          if ($('.card', game_board).length == 0) {
+            messages.push('CLEARED!!!');
+            finish_click();
+          }
+
+          if (found_sets.length == initial_sets.length) {
             messages.push('NO SETS LEFT');
+            finish_click();
           }
 
           update_status(messages);
           console.log(messages, selected_cards);
         } else {
-          // TODO: maybe also update status so it's game board visible?
-
           // three cards selected, but not a set, let's log why:
+          diff = vector_mod3(vector_sum(selected_cards));
           console.log(selected_cards,
-            'not a set because',vector_mod3(vector_sum(selected_cards)));
+            'not a set because',diff);
+
+          // update status on why it isn't a set
+          diff_attrs = [];
+          for (const key in diff) {
+            if (Object.prototype.hasOwnProperty.call(diff, key)) { // Important for avoiding inherited properties
+              const value = diff[key];
+              if (value > 0) diff_attrs.push(key);
+            }
+          }
+          update_status("Not a set: " + diff_attrs.join(','))
         }
       }
     } else {
@@ -186,6 +251,69 @@ var Savitr = function(game_board, options) {
 
       // update UI
       $(this).parent('td').toggleClass('selected');
+      update_status("");
+    }
+  }
+
+  function update_game_status() {
+    green_circle = String.fromCodePoint(0x1F7E2); // "🟢"
+    red_circle = String.fromCodePoint(0x1F534);  // "🔴"
+
+    result = '';
+    for (var counter=0; counter < initial_sets.length; counter++) {
+      if (counter < found_sets.length) {
+        result += green_circle;
+      } else {
+        result += red_circle;
+      }
+    }
+
+    game_status = result; 
+    
+    console.log(game_status);
+    $('.game_status',game_board).html(game_status);
+  }
+
+  function finish_click() {
+    if (timer_var) {
+      clearInterval(timer_var);
+      timer_var = null;
+
+      $('.card', game_board).off('click');
+//      $('.controls .finish',game_board).off('click'); // Leave enabled for sharing, but used to disable in previous versions
+      $('.controls .finish',game_board).html("SHARE")
+
+      // TODO: display the sets not found
+      console.log('initial sets', initial_sets, 'sets found', found_sets);
+
+      for (var i=0; i < initial_sets.length; i++) {
+        set_id = initial_sets[i]['set_id'];
+        if (!found_sets.includes(set_id)) {
+          card_numbers = set_id.split('-');
+          cloned = $('#card-'+card_numbers[0]+',#card-'+card_numbers[1]+',#card-'+card_numbers[2], game_board).clone();
+          cloned.css("border", "2px solid red");
+          $('.found_sets', game_board).append($('<div/>').append(cloned));
+          console.log('set_id', set_id, 'cloned:', cloned);
+        }
+
+      }
+
+
+    } else {
+      game_seed = (typeof settings['shuffle'] === 'string' ? settings['shuffle'] : '');
+
+      copy_text = "Savitr " + 
+                    game_seed +
+                    ": " + game_status +
+                    " " + timer_display.html()
+
+      navigator.clipboard.writeText(copy_text)
+      .then(() => {
+          alert("Copied the text: " + copy_text);
+      })
+      .catch(err => {
+          console.error('Failed to copy text: ', err);
+      });
     }
   }
 
@@ -250,7 +378,12 @@ var Savitr = function(game_board, options) {
           counter++;
           var set_possibility = [cards[i],cards[j],cards[k]];
           if (is_set(set_possibility)) {
-            sets.push(set_possibility);
+            sets.push(
+              {
+                set_id: [i,j,k].sort().join('-'),
+                cards: set_possibility
+              }
+            );
           }
         }
       }
@@ -277,6 +410,20 @@ var Savitr = function(game_board, options) {
       array[j] = temp;
     }
   }
+
+  function timer() {
+    ++total_seconds;
+    let hour = Math.floor(total_seconds / 3600);
+    let minute = Math.floor((total_seconds - hour * 3600) / 60);
+    let seconds = total_seconds - (hour * 3600 + minute * 60);
+
+    // Add leading zeros if necessary
+    hour = hour < 10 ? "0" + hour : hour;
+    minute = minute < 10 ? "0" + minute : minute;
+    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+    timer_display.html(/*hour + ":" +*/ minute + ":" + seconds);
+}
 
   // images below generated using `ruby base64_images.rb | pbcopy`
   //   TODO: optimize the images.  shouldn't need 81 images when there's only 3 shapes
