@@ -4,7 +4,8 @@ var Savitr = function(game_board, options) {
   var settings = {
     columns: 4,
     rows:    3,
-    shuffle: true
+    shuffle: true,
+    hint_threshold: 5 // number of incorrect guesses before hint button is shown, -1 for no hint button
   };
 
   $.extend(settings,options);  // options override the default settings
@@ -28,6 +29,8 @@ var Savitr = function(game_board, options) {
   // Game state
   var selected = []; // each value is card id (index into `deck`)
   var found_sets = []; // strings of three card numbers (of the deck) separated by dashes "1-5-7".
+  var incorrect_guesses = 0; // track incorrect guesses for hint system
+  var set_indices = {}; // map set_id to index for emoji coloring
 
   game_board.html(draw_board(rows,columns));
 
@@ -42,11 +45,19 @@ var Savitr = function(game_board, options) {
   function start() {
     selected = [];  // clear selected so the reset button can call this method
     found_sets = [];
+    incorrect_guesses = 0; // reset incorrect guesses counter
+    set_indices = {}; // reset set indices
 
     console.log('Dealing...')
     deck = new_deck(settings['shuffle']);
     deal_cards();
     initial_sets = sets_in(cards_left());
+    
+    // Assign indices to each set for emoji coloring
+    for (var i = 0; i < initial_sets.length; i++) {
+      set_indices[initial_sets[i].set_id] = i;
+    }
+    
     if (initial_sets.length == 0) {
       $('.goal',game_board).html("No sets found for this deal. Enjoy today's break. See you tomorrow!");
     } else {
@@ -58,6 +69,11 @@ var Savitr = function(game_board, options) {
 
       // Enable the finish button
       $('.controls .finish',game_board).click(finish_click);
+      
+      // Enable the hint button
+      if (settings['hint_threshold'] != -1) {
+        $('.controls .hint',game_board).click(hint_click);
+      }
 
       // Turn on the timer
       total_seconds = 0;
@@ -80,6 +96,7 @@ var Savitr = function(game_board, options) {
                       '<th class="message" align="center" colspan="'+(columns-2)+'"></th>' +
                       '<th class="controls" align="right">'+
                           '<span class="timer">00:00</span>'+
+                          '<button class="control hint" style="display:none;">HINT</button>'+
                           '<button class="control finish">FINISH</button>'+
                          // '<button class="control reset">reset</button>'+
                       '</th>' +
@@ -96,7 +113,7 @@ var Savitr = function(game_board, options) {
 
     board.append(table);
 
-    board.append($('<div><span class="goal"/>&nbsp;<span class="game_status"/></div><div class="found_sets"/>'));
+    board.append($('<div><span class="goal"/>&nbsp;<span class="game_status"/></div><div class="found_sets"><h4>🎉 Sets Found:</h4></div>'));
 
     return board;
   }
@@ -195,13 +212,25 @@ var Savitr = function(game_board, options) {
           set_already_found = found_sets.includes(selected_card_number_string);
 
           if (!set_already_found) {
+            // Add celebration animation to selected cards
+            $('.selected', game_board).addClass('set-found');
+            
+            // Create found set display with animation
+            var setContainer = $('<div class="found-set-item"/>');
             cloned = $('.selected .card', game_board).clone();
-            $('.found_sets', game_board).append($('<div/>').append(cloned));
+            setContainer.append(cloned);
+            $('.found_sets', game_board).append(setContainer);
+            
+            // Add a brief delay before removing selection to show the animation
+            setTimeout(function() {
+              $('.selected', game_board).toggleClass('selected');
+              $('.selected', game_board).removeClass('set-found');
+            }, 600);
+            
           // One game variation is to remove a found set.
           // Leaving a found set visible allows finding other sets that may
           // intersect with one of these cards.
           //          $('.selected .card', game_board).remove();
-            $('.selected', game_board).toggleClass('selected');
             console.log(selected);
             found_sets.push(selected_card_number_string);
             console.log(found_sets);
@@ -234,6 +263,14 @@ var Savitr = function(game_board, options) {
           console.log(selected_cards,
             'not a set because',diff);
 
+          // Track incorrect guess
+          incorrect_guesses++;
+          
+          // Show hint button after 5 incorrect guesses
+          if (incorrect_guesses >= settings['hint_threshold']) {
+            $('.controls .hint', game_board).show();
+          }
+
           // update status on why it isn't a set
           diff_attrs = [];
           for (const key in diff) {
@@ -243,6 +280,13 @@ var Savitr = function(game_board, options) {
             }
           }
           update_status("Not a set: " + diff_attrs.join(','))
+          
+          // Add shake animation for invalid set and clear selection
+          $('.selected', game_board).addClass('invalid-set');
+          setTimeout(function() {
+            $('.selected', game_board).removeClass('selected invalid-set');
+            selected = [];
+          }, 800);
         }
       }
     } else {
@@ -260,8 +304,9 @@ var Savitr = function(game_board, options) {
     red_circle = String.fromCodePoint(0x1F534);  // "🔴"
 
     result = '';
-    for (var counter=0; counter < initial_sets.length; counter++) {
-      if (counter < found_sets.length) {
+    for (var i = 0; i < initial_sets.length; i++) {
+      var set_id = initial_sets[i].set_id;
+      if (found_sets.includes(set_id)) {
         result += green_circle;
       } else {
         result += red_circle;
@@ -290,20 +335,42 @@ var Savitr = function(game_board, options) {
         set_id = initial_sets[i]['set_id'];
         if (!found_sets.includes(set_id)) {
           card_numbers = set_id.split('-');
-          cloned = $('#card-'+card_numbers[0]+',#card-'+card_numbers[1]+',#card-'+card_numbers[2], game_board).clone();
-          cloned.css("border", "2px solid red");
-          $('.found_sets', game_board).append($('<div/>').append(cloned));
-          console.log('set_id', set_id, 'cloned:', cloned);
+          
+          // 10/04/25: Fixed bug where previously cloned cards were accumulating in subsequent sets
+          var setContainer = $('<div class="found-set-item"/>');
+          for (var j = 0; j < card_numbers.length; j++) {
+            var cardElement = $('#card-' + card_numbers[j], game_board);
+            if (cardElement.length > 0) {
+              var clonedCard = cardElement.clone();
+              clonedCard.css("border", "2px solid red");
+              clonedCard.css("width", "30px");
+              clonedCard.css("height", "30px");
+              clonedCard.css("border-radius", "4px");
+              setContainer.append(clonedCard);
+            }
+          }
+          
+          $('.found_sets', game_board).append(setContainer);
+          // console.log('set_id', set_id, 'cloned set with', card_numbers.length, 'cards');
         }
 
       }
 
 
     } else {
-      game_seed = (typeof settings['shuffle'] === 'string' ? settings['shuffle'] : '');
+      // TODO include the game seed instead of the date? (deployment defined)
+      // game_seed = (typeof settings['shuffle'] === 'string' ? settings['shuffle'] : '');
+      
+      // Get current date in MM/DD/YY format
+      var today = new Date();
+      var month = String(today.getMonth() + 1).padStart(2, '0');
+      var day = String(today.getDate()).padStart(2, '0');
+      var year = String(today.getFullYear()).slice(-2);
+      var dateString = month + '/' + day + '/' + year;
 
       copy_text = "Savitr " + 
-                    game_seed +
+                    // game_seed + " " +
+                    dateString +
                     ": " + game_status +
                     " " + timer_display.html()
 
@@ -314,6 +381,39 @@ var Savitr = function(game_board, options) {
       .catch(err => {
           console.error('Failed to copy text: ', err);
       });
+    }
+  }
+
+  function hint_click() {
+    // Find undiscovered sets
+    var undiscovered_sets = [];
+    for (var i = 0; i < initial_sets.length; i++) {
+      var set_id = initial_sets[i].set_id;
+      if (!found_sets.includes(set_id)) {
+        undiscovered_sets.push(initial_sets[i]);
+      }
+    }
+    
+    if (undiscovered_sets.length > 0) {
+      // Pick a random undiscovered set
+      var random_set = undiscovered_sets[Math.floor(Math.random() * undiscovered_sets.length)];
+      var card_numbers = random_set.set_id.split('-');
+      
+      // Pick a random card from the set to highlight
+      var random_card_index = card_numbers[Math.floor(Math.random() * 3)];
+      var card_element = $('#card-' + random_card_index, game_board);
+      
+      // Disable hint button temporarily
+      $('.controls .hint', game_board).prop('disabled', true);
+      
+      // Add highlight effect
+      card_element.parent('td').addClass('hint-highlight');
+      
+      // Remove highlight after 3 seconds and re-enable hint button
+      setTimeout(function() {
+        card_element.parent('td').removeClass('hint-highlight');
+        $('.controls .hint', game_board).prop('disabled', false);
+      }, 3000);
     }
   }
 

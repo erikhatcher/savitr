@@ -1,8 +1,11 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>Savitr: one that rises and sets</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savitr</title>
+    <link rel="stylesheet" href="styles.css">
     <script src="jquery-3.3.1.min.js"></script>
-
     <script src="savitr.js"></script>
 
     <script>
@@ -15,36 +18,35 @@
       }
 
       $(function() {
-
         var game_seed = $.urlParam('game_seed') || true;
-//var game_seed = new Date().toISOString().split('T')[0];
 
         var this_game_board = $('#my_game');
         var game = new Savitr(this_game_board, {columns: 4, rows: 3, shuffle: game_seed});
-        // $('#start').click(game.start);
         game.start();
-
-        // Test if two games work at the same time, one with a fixed seed (same, randomized deck every time)
-        // var gb2 = $('#game2');
-        // new Savitr(gb2, {columns: 4, rows: 3, shuffle: true, shuffle: 'x'}).start();
       });
-
     </script>
-
-    <style>
-      <!-- TODO: inline these into savitr.js? -->
-      .board { table-layout:fixed; }
-      .board td { width:100px; height:100px; border-width: 1px; border-style: solid;  border-color: #000000; }
-      .board td.selected { border-width: 5px; border-color: blue; }
-    </style>
   </head>
   <body>
+    <div class="container">
+      <div class="header">
+        <h1>Savitr</h1>
+        <p>"In due place, Savitr hath <strong>set</strong> each creature." - Veda Hymn</p>
+      </div>
 
-    <div id="my_game">
+      <div class="instructions">
+        <h3>How to Play Set</h3>
+        <p>A <span class="highlight">Set</span> consists of three cards where each feature is either the same on all three cards or different on all three cards.</p>
+        <p><strong>Features:</strong> Number (1, 2, or 3), Color (Red, Green, or Purple), Shading (Empty, Striped, or Solid), and Shape (Oval, Squiggle, or Diamond)</p>
+        <p><strong>Goal:</strong> Find as many sets as possible! Click on three cards to select them. If they form a valid set, they'll be highlighted. If you can't find all the sets, you can </p>
+      </div>
+
+      <div class="game-container">
+        <div id="my_game"></div>
+      </div>
+
+      <div class="footer">
+        <p><a href="https://github.com/erikhatcher/savitr" target="_blank">View on GitHub</a></p>
+      </div>
     </div>
-
-    <hr/>
-
-    <!-- <div id="game2"></div> -->
   </body>
 </html>
