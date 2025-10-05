@@ -336,20 +336,7 @@ var Savitr = function(game_board, options) {
         if (!found_sets.includes(set_id)) {
           card_numbers = set_id.split('-');
           
-          // 10/04/25: Fixed bug where previously cloned cards were accumulating in subsequent sets
-          var setContainer = $('<div class="found-set-item"/>');
-          for (var j = 0; j < card_numbers.length; j++) {
-            var cardElement = $('#card-' + card_numbers[j], game_board);
-            if (cardElement.length > 0) {
-              var clonedCard = cardElement.clone();
-              clonedCard.css("border", "2px solid red");
-              clonedCard.css("width", "30px");
-              clonedCard.css("height", "30px");
-              clonedCard.css("border-radius", "4px");
-              setContainer.append(clonedCard);
-            }
-          }
-          
+          cloned = $('.board #card-'+card_numbers[0]+',.board #card-'+card_numbers[1]+',.board #card-'+card_numbers[2], game_board).clone();
           $('.found_sets', game_board).append(setContainer);
           // console.log('set_id', set_id, 'cloned set with', card_numbers.length, 'cards');
         }
