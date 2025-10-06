@@ -17,8 +17,6 @@ var Savitr = function(game_board, options) {
   var shapes   = ['oval',  'squiggle', 'diamond'];
   var deck_size = numbers.length * colors.length * shadings.length * shapes.length;
 
-  var deck = new_deck(settings['shuffle']);
-
   var rows = settings['rows'];
   var columns = settings['columns']
 
@@ -27,6 +25,7 @@ var Savitr = function(game_board, options) {
   }
 
   // Game state
+  var deck = new_deck(settings['shuffle']);
   var selected = []; // each value is card id (index into `deck`)
   var found_sets = []; // strings of three card numbers (of the deck) separated by dashes "1-5-7".
   var incorrect_guesses = 0; // track incorrect guesses for hint system
@@ -49,7 +48,7 @@ var Savitr = function(game_board, options) {
     set_indices = {}; // reset set indices
 
     console.log('Dealing...')
-    deck = new_deck(settings['shuffle']);
+    //deck = new_deck(settings['shuffle']);
     deal_cards();
     initial_sets = sets_in(cards_left());
     
@@ -321,6 +320,7 @@ var Savitr = function(game_board, options) {
 
   function finish_click() {
     if (timer_var) {
+      // FINISH
       clearInterval(timer_var);
       timer_var = null;
 
@@ -328,7 +328,7 @@ var Savitr = function(game_board, options) {
 //      $('.controls .finish',game_board).off('click'); // Leave enabled for sharing, but used to disable in previous versions
       $('.controls .finish',game_board).html("SHARE")
 
-      // TODO: display the sets not found
+      // TODO: perhaps better is to keep a `found` flag on the `initial_sets` rather than the 
       console.log('initial sets', initial_sets, 'sets found', found_sets);
 
       for (var i=0; i < initial_sets.length; i++) {
@@ -337,27 +337,18 @@ var Savitr = function(game_board, options) {
           card_numbers = set_id.split('-');
           
           cloned = $('.board #card-'+card_numbers[0]+',.board #card-'+card_numbers[1]+',.board #card-'+card_numbers[2], game_board).clone();
+          var setContainer = $('<div class="found-set-item"/>');
+          setContainer.append(cloned);
           $('.found_sets', game_board).append(setContainer);
           // console.log('set_id', set_id, 'cloned set with', card_numbers.length, 'cards');
         }
 
       }
-
-
     } else {
-      // TODO include the game seed instead of the date? (deployment defined)
-      // game_seed = (typeof settings['shuffle'] === 'string' ? settings['shuffle'] : '');
-      
-      // Get current date in MM/DD/YY format
-      var today = new Date();
-      var month = String(today.getMonth() + 1).padStart(2, '0');
-      var day = String(today.getDate()).padStart(2, '0');
-      var year = String(today.getFullYear()).slice(-2);
-      var dateString = month + '/' + day + '/' + year;
-
+      // SHARE
+      game_seed = (typeof settings['shuffle'] === 'string' ? settings['shuffle'] : '');      
       copy_text = "Savitr " + 
-                    // game_seed + " " +
-                    dateString +
+                    game_seed + " " +
                     ": " + game_status +
                     " " + timer_display.html()
 
