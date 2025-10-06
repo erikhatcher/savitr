@@ -21,7 +21,7 @@
         var game_seed = $.urlParam('game_seed') || true;
 
         var this_game_board = $('#my_game');
-        var game = new Savitr(this_game_board, {columns: 4, rows: 3, shuffle: game_seed});
+        var game = new Savitr(this_game_board, {columns: 3, rows: 4, shuffle: game_seed});
         game.start();
       });
     </script>
@@ -33,6 +33,7 @@
         <p>"In due place, Savitr hath <strong>set</strong> each creature." - Veda Hymn</p>
       </div>
 
+      <a href="#instructions" onclick="$('.instructions').toggle()">hide/show instructions</a>
       <div class="instructions">
         <h3>How to Play Set</h3>
         <p>A <span class="highlight">Set</span> consists of three cards where each feature is either the same on all three cards or different on all three cards.</p>
