@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="jquery-3.3.1.min.js"></script>
     <script src="savitr.js"></script>
+    <script src="calendar.js"></script>
 
     <script>
       // urlParam copied from https://stackoverflow.com/questions/7731778/get-query-string-parameters-with-jquery
@@ -23,6 +24,8 @@
         var this_game_board = $('#my_game');
         var game = new Savitr(this_game_board, {columns: 3, rows: 4, shuffle: game_seed});
         game.start();
+
+        new SavitrCalendar($('.container'));
       });
     </script>
   </head>

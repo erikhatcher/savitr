@@ -328,7 +328,7 @@ var Savitr = function(game_board, options) {
 //      $('.controls .finish',game_board).off('click'); // Leave enabled for sharing, but used to disable in previous versions
       $('.controls .finish',game_board).html("SHARE")
 
-      // TODO: perhaps better is to keep a `found` flag on the `initial_sets` rather than the 
+      // TODO: perhaps better is to keep a `found` flag on the `initial_sets` rather than a separate data structure 
       console.log('initial sets', initial_sets, 'sets found', found_sets);
 
       for (var i=0; i < initial_sets.length; i++) {

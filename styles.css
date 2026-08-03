@@ -285,6 +285,126 @@ body {
   border-radius: 4px;
 }
 
+/* Calendar */
+.calendar-corner {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.calendar-toggle {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.calendar-toggle:hover {
+  background: #f0f4ff;
+  transform: scale(1.1);
+}
+
+.calendar-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  width: 260px;
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.calendar-month {
+  font-weight: 700;
+  color: #4a5568;
+}
+
+.calendar-prev, .calendar-next {
+  background: #667eea;
+  color: white;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendar-prev:disabled, .calendar-next:disabled {
+  background: #e2e8f0;
+  color: #a0aec0;
+  cursor: default;
+}
+
+.calendar-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.calendar-grid th {
+  font-size: 0.75rem;
+  color: #a0aec0;
+  font-weight: 600;
+  padding-bottom: 4px;
+}
+
+.calendar-grid td {
+  text-align: center;
+  padding: 1px;
+  height: 30px;
+}
+
+.calendar-grid a {
+  display: block;
+  line-height: 28px;
+  border-radius: 6px;
+  color: #4a5568;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.calendar-grid a:hover {
+  background: #667eea;
+  color: white;
+}
+
+.calendar-grid a.calendar-today {
+  border: 2px solid #667eea;
+  line-height: 24px;
+}
+
+.calendar-grid a.calendar-current {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+}
+
+.calendar-future {
+  color: #cbd5e0;
+}
+
+.calendar-note {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: #a0aec0;
+  text-align: center;
+}
+
 .footer {
   text-align: center;
   margin-top: 30px;
