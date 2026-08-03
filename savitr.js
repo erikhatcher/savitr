@@ -30,6 +30,11 @@ var Savitr = function(game_board, options) {
   var found_sets = []; // strings of three card numbers (of the deck) separated by dashes "1-5-7".
   var incorrect_guesses = 0; // track incorrect guesses for hint system
   var set_indices = {}; // map set_id to index for emoji coloring
+  var finished = false; // has the game been finished (timer stopped, missed sets revealed)?
+
+  // Progress is saved per seed, so a dated game (?game_seed=YYYY-MM-DD) can be resumed.
+  // Randomly seeded games aren't reproducible, so there's nothing worth saving for them.
+  var storage_key = (typeof settings['shuffle'] === 'string') ? 'savitr:' + settings['shuffle'] : null;
 
   game_board.html(draw_board(rows,columns));
 
@@ -46,6 +51,7 @@ var Savitr = function(game_board, options) {
     found_sets = [];
     incorrect_guesses = 0; // reset incorrect guesses counter
     set_indices = {}; // reset set indices
+    finished = false;
 
     console.log('Dealing...')
     //deck = new_deck(settings['shuffle']);
@@ -79,6 +85,8 @@ var Savitr = function(game_board, options) {
       if (!timer_var) { // Prevent multiple intervals from starting
         timer_var = setInterval(timer, 1000);
       }
+
+      restore_state(); // pick up where a previous visit to this seed left off
     }
 
     // Set the title based, including seed/date
@@ -215,11 +223,8 @@ var Savitr = function(game_board, options) {
             $('.selected', game_board).addClass('set-found');
             
             // Create found set display with animation
-            var setContainer = $('<div class="found-set-item"/>');
-            cloned = $('.selected .card', game_board).clone();
-            setContainer.append(cloned);
-            $('.found_sets', game_board).append(setContainer);
-            
+            show_set(selected_card_number_string);
+
             // Add a brief delay before removing selection to show the animation
             setTimeout(function() {
               $('.selected', game_board).toggleClass('selected');
@@ -237,6 +242,7 @@ var Savitr = function(game_board, options) {
 
             // update game status
             update_game_status();
+            save_state();
 
           } else {
             messages.push('ALREADY FOUND');
@@ -269,6 +275,7 @@ var Savitr = function(game_board, options) {
           if (incorrect_guesses >= settings['hint_threshold']) {
             $('.controls .hint', game_board).show();
           }
+          save_state();
 
           // update status on why it isn't a set
           diff_attrs = [];
@@ -298,6 +305,15 @@ var Savitr = function(game_board, options) {
     }
   }
 
+  // Clone a set's three cards off the board into the list below it
+  function show_set(set_id) {
+    var card_numbers = set_id.split('-');
+    var cloned = $('.board #card-'+card_numbers[0]+',.board #card-'+card_numbers[1]+',.board #card-'+card_numbers[2], game_board).clone();
+    var setContainer = $('<div class="found-set-item"/>');
+    setContainer.append(cloned);
+    $('.found_sets', game_board).append(setContainer);
+  }
+
   function update_game_status() {
     green_circle = String.fromCodePoint(0x1F7E2); // "🟢"
     red_circle = String.fromCodePoint(0x1F534);  // "🔴"
@@ -323,6 +339,8 @@ var Savitr = function(game_board, options) {
       // FINISH
       clearInterval(timer_var);
       timer_var = null;
+      finished = true;
+      save_state();
 
       $('.card', game_board).off('click');
 //      $('.controls .finish',game_board).off('click'); // Leave enabled for sharing, but used to disable in previous versions
@@ -334,13 +352,7 @@ var Savitr = function(game_board, options) {
       for (var i=0; i < initial_sets.length; i++) {
         set_id = initial_sets[i]['set_id'];
         if (!found_sets.includes(set_id)) {
-          card_numbers = set_id.split('-');
-          
-          cloned = $('.board #card-'+card_numbers[0]+',.board #card-'+card_numbers[1]+',.board #card-'+card_numbers[2], game_board).clone();
-          var setContainer = $('<div class="found-set-item"/>');
-          setContainer.append(cloned);
-          $('.found_sets', game_board).append(setContainer);
-          // console.log('set_id', set_id, 'cloned set with', card_numbers.length, 'cards');
+          show_set(set_id);
         }
 
       }
@@ -491,6 +503,11 @@ var Savitr = function(game_board, options) {
 
   function timer() {
     ++total_seconds;
+    render_timer();
+    save_state(); // checkpoint every second, so a mid-game refresh keeps the clock
+  }
+
+  function render_timer() {
     let hour = Math.floor(total_seconds / 3600);
     let minute = Math.floor((total_seconds - hour * 3600) / 60);
     let seconds = total_seconds - (hour * 3600 + minute * 60);
@@ -502,6 +519,67 @@ var Savitr = function(game_board, options) {
 
     timer_display.html(/*hour + ":" +*/ minute + ":" + seconds);
 }
+
+  function save_state() {
+    if (!storage_key) { return; }
+
+    try {
+      localStorage.setItem(storage_key, JSON.stringify({
+        found_sets: found_sets,
+        incorrect_guesses: incorrect_guesses,
+        total_seconds: total_seconds,
+        finished: finished
+      }));
+    } catch (e) {
+      // Storage can be unavailable (private browsing) or full; a game that can't be saved still plays.
+      console.log('unable to save game state', e);
+    }
+  }
+
+  function saved_state() {
+    if (!storage_key) { return null; }
+
+    try {
+      var saved = JSON.parse(localStorage.getItem(storage_key));
+      return (saved && Array.isArray(saved.found_sets)) ? saved : null;
+    } catch (e) {
+      console.log('unable to read saved game state', e);
+      return null;
+    }
+  }
+
+  // Replay a saved game: re-show the sets already found, restore the clock and
+  // guess count, and finish out the game if it had already been finished.
+  function restore_state() {
+    var saved = saved_state();
+    if (!saved) { return; }
+
+    var valid_set_ids = initial_sets.map(function(set) { return set['set_id']; });
+
+    saved.found_sets.forEach(function(set_id) {
+      // Ignore anything that isn't a set in this deal, in case the save predates a change to the deck
+      if (valid_set_ids.includes(set_id) && !found_sets.includes(set_id)) {
+        found_sets.push(set_id);
+        show_set(set_id);
+      }
+    });
+
+    incorrect_guesses = saved.incorrect_guesses || 0;
+    if (settings['hint_threshold'] != -1 && incorrect_guesses >= settings['hint_threshold']) {
+      $('.controls .hint', game_board).show();
+    }
+
+    total_seconds = saved.total_seconds || 0;
+    render_timer();
+
+    update_game_status();
+
+    if (saved.finished) {
+      finish_click(); // stops the clock, reveals the missed sets, switches FINISH to SHARE
+    }
+
+    console.log('restored game state for', storage_key, saved);
+  }
 
   // images below generated using `ruby base64_images.rb | pbcopy`
   //   TODO: optimize the images.  shouldn't need 81 images when there's only 3 shapes
