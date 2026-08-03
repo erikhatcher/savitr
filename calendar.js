@@ -10,7 +10,10 @@ var SavitrCalendar = function(container) {
 
   var today_id = date_id(today);
   var current_id = current_game_id();       // the date, if any, this page was loaded with
-  var shown = new Date(today.getTime());    // month currently displayed; day component unused
+  // The month to open on: the month of the game being played, if it's a dated one, else this month
+  var default_month = current_id ? new Date(current_id.substring(0, 4), current_id.substring(5, 7) - 1, 1)
+                                 : new Date(today.getFullYear(), today.getMonth(), 1);
+  var shown = new Date(default_month.getTime()); // month currently displayed; day component unused
 
   var corner = $('<div class="calendar-corner">' +
                    '<button class="calendar-toggle" title="Play a game by date">📅</button>' +
@@ -21,7 +24,11 @@ var SavitrCalendar = function(container) {
                        '<button class="calendar-next" title="Next month">›</button>' +
                      '</div>' +
                      '<table class="calendar-grid"></table>' +
-                     '<div class="calendar-note">Each day is its own game.</div>' +
+                     '<div class="calendar-legend">' +
+                       '<span class="calendar-solved">solved</span>' +
+                       '<span class="calendar-unsolved">missed</span>' +
+                       '<span class="calendar-started">started</span>' +
+                     '</div>' +
                    '</div>' +
                  '</div>');
 
@@ -32,7 +39,7 @@ var SavitrCalendar = function(container) {
     if (popup.is(':visible')) {
       popup.hide();
     } else {
-      shown = new Date(today.getTime()); // always reopen on the current month
+      shown = new Date(default_month.getTime()); // reopen on the played game's month
       draw_month();
       popup.show();
     }
@@ -104,10 +111,47 @@ var SavitrCalendar = function(container) {
     }
 
     var link = $('<a/>').attr('href', 'index.html?game_seed=' + id).html(date.getDate());
-    if (id == today_id) { link.addClass('calendar-today').attr('title', "Today's game"); }
+
+    var state = day_state(id);
+    link.addClass('calendar-' + state.name).attr('title', state.title);
+
+    if (id == today_id) { link.addClass('calendar-today'); }
     if (id == current_id) { link.addClass('calendar-current'); }
 
     return cell.append(link);
+  }
+
+  // How a day is colored: unplayed (blue), in progress (amber),
+  // finished having found every set (green), or finished with sets missed (red).
+  function day_state(id) {
+    var saved = saved_game(id);
+
+    if (!saved) { return {name: 'unplayed', title: 'Not played yet'}; }
+
+    var found = Array.isArray(saved.found_sets) ? saved.found_sets.length : 0;
+
+    if (!saved.finished) {
+      return {name: 'started', title: 'In progress: ' + found + ' of ' + saved.total_sets + ' sets found'};
+    }
+
+    // total_sets is absent in games saved before it was recorded; those can't be judged solved or not
+    if (typeof saved.total_sets !== 'number') {
+      return {name: 'started', title: 'Played'};
+    }
+
+    if (found >= saved.total_sets) {
+      return {name: 'solved', title: 'Solved: all ' + saved.total_sets + ' sets found'};
+    }
+
+    return {name: 'unsolved', title: 'Finished: ' + found + ' of ' + saved.total_sets + ' sets found'};
+  }
+
+  function saved_game(id) {
+    try {
+      return JSON.parse(localStorage.getItem('savitr:' + id)); // same key Savitr saves under
+    } catch (e) {
+      return null;
+    }
   }
 
   function date_id(date) {

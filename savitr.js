@@ -526,6 +526,7 @@ var Savitr = function(game_board, options) {
     try {
       localStorage.setItem(storage_key, JSON.stringify({
         found_sets: found_sets,
+        total_sets: initial_sets.length, // lets the calendar tell a solved game from an unsolved one
         incorrect_guesses: incorrect_guesses,
         total_seconds: total_seconds,
         finished: finished

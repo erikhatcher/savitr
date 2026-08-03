@@ -371,38 +371,65 @@ body {
 
 .calendar-grid a {
   display: block;
-  line-height: 28px;
+  line-height: 26px;
+  border: 2px solid transparent;
   border-radius: 6px;
-  color: #4a5568;
   text-decoration: none;
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
-.calendar-grid a:hover {
-  background: #667eea;
-  color: white;
+/* Day states: unplayed, in progress, solved, finished with sets missed */
+.calendar-unplayed {
+  color: #667eea;
+  background: #eef2ff;
 }
 
+.calendar-started {
+  color: #b7791f;
+  background: #fffaf0;
+}
+
+.calendar-solved {
+  color: #276749;
+  background: #c6f6d5;
+}
+
+.calendar-unsolved {
+  color: #c53030;
+  background: #fed7d7;
+}
+
+.calendar-grid a:hover {
+  filter: brightness(0.94);
+  transform: scale(1.08);
+}
+
+/* Today, and the day this page is playing, are marked by outline so the state color still reads */
 .calendar-grid a.calendar-today {
-  border: 2px solid #667eea;
-  line-height: 24px;
+  border-color: #a0aec0;
 }
 
 .calendar-grid a.calendar-current {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  color: white;
+  border-color: #4a5568;
+  box-shadow: 0 0 0 1px #4a5568;
 }
 
 .calendar-future {
   color: #cbd5e0;
 }
 
-.calendar-note {
+.calendar-legend {
+  display: flex;
+  justify-content: space-between;
   margin-top: 10px;
-  font-size: 0.75rem;
-  color: #a0aec0;
-  text-align: center;
+  font-size: 0.7rem;
+}
+
+.calendar-legend span {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 .footer {
